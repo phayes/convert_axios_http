@@ -55,6 +55,12 @@ export interface ConverterOptions {
    * @default auto-generated
    */
   multipartBoundary?: string;
+  
+  /**
+   * Custom transform functions for response data
+   * Similar to axios's transformResponse option
+   */
+  transformResponse?: Array<(data: any, headers?: Record<string, string>) => any>;
 }
 
 export interface ConversionError extends Error {

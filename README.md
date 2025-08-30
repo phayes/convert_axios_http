@@ -90,6 +90,7 @@ new HttpConverter(options?: ConverterOptions)
 - `maxBodySize?: number` - Maximum size of request/response body in bytes (default: unbounded)
 - `preserveHeaderCase?: boolean` - Whether to preserve original headers case (default: false)
 - `multipartBoundary?: string` - Custom boundary for multipart requests (default: auto-generated)
+- `transformResponse?: Array<(data: any, headers?: Record<string, string>) => any>` - Custom transform functions for response data (similar to axios's transformResponse)
 
 #### Methods
 
@@ -135,6 +136,12 @@ const httpBytes = new TextEncoder().encode(
 );
 
 const response = converter.httpBytesToAxiosResponse(httpBytes);
+
+// The response.data will be automatically parsed based on content-type:
+// - JSON responses are parsed into JavaScript objects
+// - Text responses are converted to strings
+// - Binary responses remain as ArrayBuffer
+console.log(response.data); // { message: "Hello" }
 ```
 
 ##### `axiosResponseToHttpBytes(response: AxiosResponse): ArrayBuffer`
@@ -205,6 +212,55 @@ console.log(axiosConfig);
 //   },
 //   data: ArrayBuffer { ... }
 // }
+```
+
+### Response Transformation
+
+The converter automatically applies axios's transformResponse pipeline to response data:
+
+```typescript
+// JSON responses are automatically parsed
+const jsonResponse = converter.httpBytesToAxiosResponse(jsonBytes);
+console.log(jsonResponse.data); // JavaScript object, not string
+
+// Text responses are converted to strings
+const textResponse = converter.httpBytesToAxiosResponse(textBytes);
+console.log(textResponse.data); // String, not ArrayBuffer
+
+// Binary responses remain as ArrayBuffer
+const binaryResponse = converter.httpBytesToAxiosResponse(binaryBytes);
+console.log(binaryResponse.data); // ArrayBuffer
+```
+
+The converter supports all content types that axios handles by default:
+
+| Content-Type header                 | Default behavior                           |
+| ----------------------------------- | ------------------------------------------ |
+| `application/json`                  | `JSON.parse` → JavaScript object           |
+| `application/*+json`                | `JSON.parse` → JavaScript object           |
+| `text/*` (e.g., `text/plain`)       | Returns as plain string                    |
+| `application/x-www-form-urlencoded` | Returns as plain string (not auto-parsed)  |
+| `application/xml` or `text/xml`     | Returns as plain string (no XML parsing)   |
+| `application/octet-stream`          | Returns as raw ArrayBuffer                 |
+| Others (e.g., `image/png`, `pdf`)   | Returns as text string if decodable        |
+
+You can also provide custom transform functions:
+
+```typescript
+const converter = new HttpConverter({
+  transformResponse: [
+    (data) => {
+      // Custom transformation logic
+      if (typeof data === 'object' && data.message) {
+        data.message = data.message.toUpperCase();
+      }
+      return data;
+    }
+  ]
+});
+
+const response = converter.httpBytesToAxiosResponse(httpBytes);
+console.log(response.data.message); // "HELLO" (uppercase)
 ```
 
 ### Multipart Form Data

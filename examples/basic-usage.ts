@@ -24,7 +24,7 @@ const httpRequestBytes = new TextEncoder().encode(
   'Content-Length: 25\r\n' +
   '\r\n' +
   '{"name":"John","age":30}'
-);
+).buffer as ArrayBuffer;
 
 const axiosConfig = converter.httpBytesToAxiosRequest(httpRequestBytes);
 console.log('Axios Config:', axiosConfig);
@@ -67,7 +67,7 @@ const multipartRequest = new TextEncoder().encode(
   '\r\n' +
   'Hello World\r\n' +
   '----WebKitFormBoundaryABC123--\r\n'
-);
+).buffer as ArrayBuffer;
 
 const multipartConfig = httpBytesToAxiosRequest(multipartRequest);
 console.log('Multipart Config:', multipartConfig);
@@ -82,10 +82,29 @@ const httpResponseBytes = new TextEncoder().encode(
   'Content-Length: 35\r\n' +
   '\r\n' +
   '{"success":true,"message":"Hello"}'
-);
+).buffer as ArrayBuffer;
 
 const axiosResponse = httpBytesToAxiosResponse(httpResponseBytes);
 console.log('Axios Response:', axiosResponse);
+console.log('Response data type:', typeof axiosResponse.data);
+console.log('Response data:', axiosResponse.data); // Now a JavaScript object, not ArrayBuffer
+
+// Example 4.5: Custom transformResponse
+console.log('\n=== Example 4.5: Custom transformResponse ===');
+
+const customConverter = new HttpConverter({
+  transformResponse: [
+    (data) => {
+      if (typeof data === 'object' && data.message) {
+        data.message = data.message.toUpperCase();
+      }
+      return data;
+    }
+  ]
+});
+
+const customResponse = customConverter.httpBytesToAxiosResponse(httpResponseBytes);
+console.log('Custom transformed response:', customResponse.data); // message: "HELLO"
 
 // Example 5: Custom axios adapter usage
 console.log('\n=== Example 5: Custom axios adapter ===');
@@ -107,7 +126,7 @@ class CustomHttpAdapter {
       'Content-Type: application/json\r\n' +
       '\r\n' +
       '{"status":"success"}'
-    );
+    ).buffer as ArrayBuffer;
     
     // Convert response bytes back to Axios response
     return this.converter.httpBytesToAxiosResponse(mockResponseBytes);

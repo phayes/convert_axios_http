@@ -8,13 +8,17 @@ import {
 } from './types';
 
 export class HttpConverter {
-  private options: Omit<Required<ConverterOptions>, 'maxBodySize'> & { maxBodySize?: number };
+  private options: Omit<Required<ConverterOptions>, 'maxBodySize' | 'transformResponse'> & { 
+    maxBodySize?: number;
+    transformResponse?: Array<(data: any, headers?: Record<string, string>) => any>;
+  };
 
   constructor(options: ConverterOptions = {}) {
     this.options = {
       maxBodySize: options.maxBodySize ?? undefined, // Unbounded by default
       preserveHeaderCase: options.preserveHeaderCase ?? false,
-      multipartBoundary: options.multipartBoundary ?? this.generateBoundary()
+      multipartBoundary: options.multipartBoundary ?? this.generateBoundary(),
+      transformResponse: options.transformResponse ?? undefined
     };
   }
 
@@ -132,8 +136,66 @@ export class HttpConverter {
   public httpBytesToAxiosResponse(httpBytes: ArrayBuffer): AxiosResponse {
     const parsed = this.parseHttpResponse(httpBytes);
     
+    // Apply axios's transformResponse pipeline
+    let transformedData: any = parsed.body;
+    
+    // Get content type from headers
+    const contentType = parsed.headers['content-type'] || '';
+    
+    // Apply default transformations based on content type
+    if (parsed.body && parsed.body.byteLength > 0) {
+      if (contentType.includes('application/json') || /^application\/.*\+json$/.test(contentType)) {
+        // JSON responses - parse into JavaScript object
+        try {
+          const jsonString = new TextDecoder().decode(parsed.body);
+          transformedData = JSON.parse(jsonString);
+        } catch (error) {
+          // If JSON parsing fails, keep the original data
+          transformedData = parsed.body;
+        }
+      } else if (contentType.startsWith('text/')) {
+        // Text responses - convert to string
+        transformedData = new TextDecoder().decode(parsed.body);
+      } else if (contentType.includes('application/x-www-form-urlencoded')) {
+        // Form data - return as string (axios doesn't auto-parse this)
+        transformedData = new TextDecoder().decode(parsed.body);
+      } else if (contentType.includes('application/xml') || contentType.includes('text/xml')) {
+        // XML responses - return as string (axios doesn't auto-parse XML)
+        transformedData = new TextDecoder().decode(parsed.body);
+      } else if (contentType.includes('application/octet-stream')) {
+        // For octet-stream, try to decode as text first, fallback to ArrayBuffer
+        try {
+          transformedData = new TextDecoder().decode(parsed.body);
+        } catch (error) {
+          // If text decoding fails, keep as ArrayBuffer
+          transformedData = parsed.body;
+        }
+      } else {
+        // For other content types, try to decode as text if possible
+        // This handles cases like text/html, application/javascript, etc.
+        try {
+          transformedData = new TextDecoder().decode(parsed.body);
+        } catch (error) {
+          // If text decoding fails, keep as ArrayBuffer
+          transformedData = parsed.body;
+        }
+      }
+    }
+    
+    // Apply custom transformResponse functions if provided
+    if (this.options.transformResponse) {
+      for (const transform of this.options.transformResponse) {
+        try {
+          transformedData = transform(transformedData, parsed.headers);
+        } catch (error) {
+          // If transformation fails, keep the current data
+          console.warn('Transform function failed:', error);
+        }
+      }
+    }
+    
     return {
-      data: parsed.body,
+      data: transformedData,
       status: parsed.status,
       statusText: parsed.statusText,
       headers: parsed.headers,
@@ -313,7 +375,9 @@ export class HttpConverter {
     let body: ArrayBuffer | undefined;
     if (bodyStartIndex > 0 && bodyStartIndex < lines.length) {
       const bodyText = lines.slice(bodyStartIndex).join('\r\n');
-      body = new TextEncoder().encode(bodyText).buffer as ArrayBuffer;
+      if (bodyText.length > 0) {
+        body = new TextEncoder().encode(bodyText).buffer as ArrayBuffer;
+      }
     }
 
     return {

@@ -94,7 +94,7 @@ describe('Convenience Functions', () => {
       expect(result.headers).toEqual({
         'content-type': 'application/json'
       });
-      expect(new TextDecoder().decode(result.data as ArrayBuffer)).toBe('{"message":"Hello"}');
+      expect(result.data).toEqual({ message: 'Hello' });
     });
 
     it('should accept converter options', () => {

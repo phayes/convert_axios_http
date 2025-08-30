@@ -1,6 +1,24 @@
 import { HttpConverter } from '../src/converter';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 
+// Helper functions for creating binary data in tests
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+function hexToArrayBuffer(hex: string): ArrayBuffer {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+  }
+  return bytes.buffer;
+}
+
 describe('HttpConverter', () => {
   let converter: HttpConverter;
 
@@ -235,7 +253,7 @@ describe('HttpConverter', () => {
         'content-type': 'application/json',
         'content-length': '25'
       });
-      expect(new TextDecoder().decode(result.data as ArrayBuffer)).toBe('{"message":"Hello World"}');
+      expect(result.data).toEqual({ message: 'Hello World' });
     });
 
     it('should convert response without body', () => {
@@ -252,7 +270,7 @@ describe('HttpConverter', () => {
       expect(result.headers).toEqual({
         'server': 'nginx'
       });
-      expect(result.data).toEqual(new ArrayBuffer(0));
+      expect(result.data).toBeUndefined();
     });
 
     it('should throw error for invalid HTTP response format', () => {
@@ -427,8 +445,200 @@ describe('HttpConverter', () => {
         'content-type': 'application/json',
         'cache-control': 'no-cache'
       });
-      expect(new TextDecoder().decode(convertedResponse.data as ArrayBuffer))
-        .toBe(JSON.stringify(originalResponse.data));
+      expect(convertedResponse.data).toEqual(originalResponse.data);
+    });
+  });
+
+  describe('Content Type Transformations', () => {
+    it('should handle application/json content type', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: application/json\r\n' +
+        '\r\n' +
+        '{"message":"Hello","count":42}'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toEqual({
+        message: 'Hello',
+        count: 42
+      });
+    });
+
+    it('should handle application/*+json content types', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: application/vnd.api+json\r\n' +
+        '\r\n' +
+        '{"data":{"type":"user","id":"1"}}'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toEqual({
+        data: {
+          type: 'user',
+          id: '1'
+        }
+      });
+    });
+
+    it('should handle text/plain content type', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: text/plain\r\n' +
+        '\r\n' +
+        'Hello World'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toBe('Hello World');
+    });
+
+    it('should handle text/html content type', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: text/html\r\n' +
+        '\r\n' +
+        '<html><body><h1>Hello</h1></body></html>'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toBe('<html><body><h1>Hello</h1></body></html>');
+    });
+
+    it('should handle application/x-www-form-urlencoded content type', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: application/x-www-form-urlencoded\r\n' +
+        '\r\n' +
+        'name=John&age=30&city=New+York'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toBe('name=John&age=30&city=New+York');
+    });
+
+    it('should handle application/xml content type', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: application/xml\r\n' +
+        '\r\n' +
+        '<?xml version="1.0"?><user><name>John</name><age>30</age></user>'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toBe('<?xml version="1.0"?><user><name>John</name><age>30</age></user>');
+    });
+
+    it('should handle text/xml content type', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: text/xml\r\n' +
+        '\r\n' +
+        '<?xml version="1.0"?><user><name>John</name></user>'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toBe('<?xml version="1.0"?><user><name>John</name></user>');
+    });
+
+    it('should handle application/octet-stream content type', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: application/octet-stream\r\n' +
+        '\r\n' +
+        'binary-data-here'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toBe('binary-data-here');
+    });
+
+    it('should handle image/png content type as text', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: image/png\r\n' +
+        '\r\n' +
+        'fake-png-data'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toBe('fake-png-data');
+    });
+
+    it('should handle application/javascript content type', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: application/javascript\r\n' +
+        '\r\n' +
+        'console.log("Hello World");'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toBe('console.log("Hello World");');
+    });
+
+    it('should handle malformed JSON gracefully', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: application/json\r\n' +
+        '\r\n' +
+        '{"message":"hello"'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      // Should return raw ArrayBuffer when JSON parsing fails
+      expect(result.data).toBeInstanceOf(ArrayBuffer);
+    });
+
+    it('should handle PNG image content type as text', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: image/png\r\n' +
+        '\r\n' +
+        'fake-png-data'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toBe('fake-png-data');
+    });
+
+    it('should handle application/octet-stream with text data as text', () => {
+      const httpBytes = new TextEncoder().encode(
+        'HTTP/1.1 200 OK\r\n' +
+        'Content-Type: application/octet-stream\r\n' +
+        '\r\n' +
+        'This is text data in octet-stream'
+      ).buffer as ArrayBuffer;
+
+      const result = converter.httpBytesToAxiosResponse(httpBytes);
+
+      expect(result.status).toBe(200);
+      expect(result.data).toBe('This is text data in octet-stream');
     });
   });
 });
