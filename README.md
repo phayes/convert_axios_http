@@ -6,8 +6,17 @@ This is a typescript utility package that does the following:
 4. Given a axios response object, convert it to an array of bytes that represents a full http response bytes (as an arraybuffer)
 
 
-In additional to all the regular stuff, it handles basic multipart forms and files uploads
+In additional to all the regular stuff, it handles basic multipart forms and file uploads.
 
-Here's an example of how you might use this as a part of an axios adapter:
+```ts
+import {
+  rawHttpRequestToAxiosRequest,
+  axiosRequestToRawHttp,
+  rawHttpResponseToAxiosResponse,
+  axiosResponseToRawHttp,
+} from 'convert_axios_http';
 
-TODO
+const raw = axiosRequestToRawHttp({ method: 'get', url: '/' });
+const req = rawHttpRequestToAxiosRequest(raw);
+```
+
