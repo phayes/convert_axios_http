@@ -1,6 +1,6 @@
 {
   "name": "convert-axios-http",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "TypeScript utility for converting between raw HTTP bytes and Axios request/response objects. Works in browsers and Node.js 18+ with experimental Web APIs.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
