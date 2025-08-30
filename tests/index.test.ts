@@ -23,6 +23,16 @@ describe('rawHttpRequestToAxiosRequest', () => {
     expect(req.headers?.host).toBe('example.com');
   });
 
+  it('parses JSON body', () => {
+    const raw = toArrayBuffer(
+      'POST /json HTTP/1.1\r\nContent-Type: application/json\r\n\r\n{"a":1}',
+    );
+    const req = rawHttpRequestToAxiosRequest(raw);
+    expect(req.method).toBe('POST');
+    expect(req.url).toBe('/json');
+    expect(req.data).toEqual({ a: 1 });
+  });
+
   it('parses multipart form data', () => {
     const boundary = '----WebKitFormBoundary7MA4YWxkTrZu0gW';
     const rawStr =
@@ -117,6 +127,16 @@ describe('axiosRequestToRawHttp', () => {
     });
     const str = Buffer.from(raw).toString();
     expect(str.startsWith('GET /path?x=1 HTTP/1.1')).toBe(true);
+  });
+
+  it('includes host header when provided', () => {
+    const raw = axiosRequestToRawHttp({
+      method: 'get',
+      url: '/',
+      headers: { Host: 'example.com' },
+    });
+    const str = Buffer.from(raw).toString();
+    expect(str.toLowerCase()).toContain('\r\nhost: example.com\r\n');
   });
 
   it('does not override provided content-length', () => {
