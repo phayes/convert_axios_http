@@ -1,4 +1,4 @@
-# Convert Axios HTTP
+# Convert Axios ↔ raw HTTP
 
 A TypeScript utility package for converting between raw HTTP bytes and Axios request/response objects. This package provides seamless conversion capabilities for HTTP requests and responses, including support for multipart form data and file uploads.
 
@@ -294,6 +294,7 @@ console.log(config.data instanceof FormData); // true
 ```typescript
 import { HttpConverter } from 'convert-axios-http';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios from 'axios';
 
 class CustomHttpAdapter {
   private converter = new HttpConverter();
@@ -315,6 +316,11 @@ class CustomHttpAdapter {
     throw new Error('Not implemented');
   }
 }
+
+axios.defaults.adapter = async (config) => {
+  const transport = new CustomHttpAdapter();
+  return transport.request(config);
+};
 ```
 
 ### Error Handling
