@@ -8,11 +8,11 @@ import {
 } from './types';
 
 export class HttpConverter {
-  private options: Required<ConverterOptions>;
+  private options: Omit<Required<ConverterOptions>, 'maxBodySize'> & { maxBodySize?: number };
 
   constructor(options: ConverterOptions = {}) {
     this.options = {
-      maxBodySize: options.maxBodySize ?? 10 * 1024 * 1024, // 10MB
+      maxBodySize: options.maxBodySize ?? undefined, // Unbounded by default
       preserveHeaderCase: options.preserveHeaderCase ?? false,
       multipartBoundary: options.multipartBoundary ?? this.generateBoundary()
     };

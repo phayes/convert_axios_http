@@ -40,7 +40,7 @@ export interface ParsedHttpResponse {
 export interface ConverterOptions {
   /**
    * Maximum size of request/response body in bytes
-   * @default 10MB
+   * @default unbounded (no limit)
    */
   maxBodySize?: number;
   

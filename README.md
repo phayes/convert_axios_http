@@ -54,7 +54,7 @@ new HttpConverter(options?: ConverterOptions)
 ```
 
 **Options:**
-- `maxBodySize?: number` - Maximum size of request/response body in bytes (default: 10MB)
+- `maxBodySize?: number` - Maximum size of request/response body in bytes (default: unbounded)
 - `preserveHeaderCase?: boolean` - Whether to preserve original headers case (default: false)
 - `multipartBoundary?: string` - Custom boundary for multipart requests (default: auto-generated)
 
