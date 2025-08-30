@@ -2,6 +2,12 @@
 
 A TypeScript utility package for converting between raw HTTP bytes and Axios request/response objects. This package provides seamless conversion capabilities for HTTP requests and responses, including support for multipart form data and file uploads.
 
+## Environment Support
+
+- **Browser**: Full support (all required APIs are native)
+- **Node.js**: Requires Node.js 18+ with experimental Web APIs enabled
+- **Node.js < 18**: Requires polyfills for `FormData`, `Blob`, and `File` APIs
+
 ## Features
 
 - **Bidirectional Conversion**: Convert between raw HTTP bytes and Axios objects in both directions
@@ -14,7 +20,34 @@ A TypeScript utility package for converting between raw HTTP bytes and Axios req
 ## Installation
 
 ```bash
-npm install convert-axios-http
+npm install convert-axios-http axios
+```
+
+**Note**: This package requires `axios` as a peer dependency. Make sure to install it in your project.
+
+### Node.js Setup
+
+For Node.js environments, you have several options:
+
+#### Option 1: Node.js 18+ with Experimental Web APIs (Recommended)
+```bash
+node --experimental-global-webcrypto --experimental-fetch your-script.js
+```
+
+#### Option 2: Use Polyfills
+Install and configure polyfills for older Node.js versions:
+
+```bash
+npm install form-data blob-polyfill
+```
+
+```javascript
+// At the top of your entry file
+import 'blob-polyfill';
+import FormData from 'form-data';
+
+// Make FormData globally available
+global.FormData = FormData;
 ```
 
 ## Quick Start
