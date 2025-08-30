@@ -288,6 +288,8 @@ console.log(config.data instanceof FormData); // true
 
 ### Custom Axios Adapter
 
+You can use this package as an axios adapter to transform axios requests into raw HTTP Requests, handle them however you'd like (including whatever custom transport you'd like) then transform the result back into an axios response. 
+
 ```typescript
 import { your_custom_transport_func } from './your_custom_transport_func';
 import { HttpConverter } from 'convert-axios-http';
@@ -322,9 +324,7 @@ export default (config: AxiosRequestConfig) => {
   });
 };
 
-/**
- * Normalize headers so they’re always AxiosHeaders.
- */
+// Normalize headers so they’re always AxiosHeaders.
 function normalizeAxiosRequestHeaders(
   headers?: RawAxiosRequestHeaders | AxiosHeaders
 ): AxiosRequestHeaders {
@@ -338,6 +338,9 @@ function normalizeAxiosRequestHeaders(
   // Otherwise, convert to AxiosHeaders
   return AxiosHeaders.from(headers as any);
 }
+
+// Apply the adapter
+axios.defaults.adapter = AxiosHttpProxy;
 ```
 
 ### Error Handling
