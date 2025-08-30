@@ -1,4 +1,4 @@
-# Convert Axios HTTP
+# Convert Axios ↔ raw HTTP
 
 A TypeScript utility package for converting between raw HTTP bytes and Axios request/response objects. This package provides seamless conversion capabilities for HTTP requests and responses, including support for multipart form data and file uploads.
 
