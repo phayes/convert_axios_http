@@ -44,7 +44,7 @@ describe('Convenience Functions', () => {
   });
 
   describe('axiosRequestToHttpBytes', () => {
-    it('should convert Axios request config to HTTP bytes', () => {
+    it('should convert Axios request config to HTTP bytes', async () => {
       const config: AxiosRequestConfig = {
         method: 'POST',
         url: '/api/users',
@@ -54,7 +54,7 @@ describe('Convenience Functions', () => {
         data: { name: 'John' }
       };
 
-      const result = axiosRequestToHttpBytes(config);
+      const result = await axiosRequestToHttpBytes(config);
       const resultText = new TextDecoder().decode(result);
 
       expect(resultText).toContain('POST /api/users HTTP/1.1');
@@ -62,7 +62,7 @@ describe('Convenience Functions', () => {
       expect(resultText).toContain('{"name":"John"}');
     });
 
-    it('should accept converter options', () => {
+    it('should accept converter options', async () => {
       const config: AxiosRequestConfig = {
         method: 'GET',
         url: '/api/users',
@@ -71,7 +71,7 @@ describe('Convenience Functions', () => {
         }
       };
 
-      const result = axiosRequestToHttpBytes(config, { preserveHeaderCase: true });
+      const result = await axiosRequestToHttpBytes(config, { preserveHeaderCase: true });
       const resultText = new TextDecoder().decode(result);
 
       expect(resultText).toContain('User-Agent: Test/1.0');

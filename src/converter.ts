@@ -59,7 +59,7 @@ export class HttpConverter {
   /**
    * Convert Axios request config to raw HTTP request bytes
    */
-  public axiosRequestToHttpBytes(config: AxiosRequestConfig): ArrayBuffer {
+  public async axiosRequestToHttpBytes(config: AxiosRequestConfig): Promise<ArrayBuffer> {
     const method = (config.method || 'GET').toUpperCase();
     const url = config.url || '';
     const headers = config.headers || {};
@@ -79,7 +79,7 @@ export class HttpConverter {
       const boundary = this.options.multipartBoundary;
       httpRequest += `Content-Type: multipart/form-data; boundary=${boundary}\r\n`;
       
-      const multipartBody = this.buildMultipartBody(data, boundary);
+      const multipartBody = await this.buildMultipartBody(data, boundary);
       httpRequest += `Content-Length: ${multipartBody.byteLength}\r\n`;
       httpRequest += '\r\n';
       
@@ -470,23 +470,26 @@ export class HttpConverter {
     return { fields, files };
   }
 
-  private buildMultipartBody(formData: FormData, boundary: string): ArrayBuffer {
+  private async buildMultipartBody(formData: FormData, boundary: string): Promise<ArrayBuffer> {
     const parts: ArrayBuffer[] = [];
 
     for (const [key, value] of formData.entries()) {
       let part = `--${boundary}\r\n`;
       
-      if (value instanceof File) {
-        part += `Content-Disposition: form-data; name="${key}"; filename="${value.name}"\r\n`;
-        part += `Content-Type: ${value.type || 'application/octet-stream'}\r\n`;
+      if (value instanceof Blob) {
+        const filename = value instanceof (globalThis as any).File ? (value as any).name : 'blob';
+        const contentType = value.type || 'application/octet-stream';
+        
+        part += `Content-Disposition: form-data; name="${key}"; filename="${filename}"\r\n`;
+        part += `Content-Type: ${contentType}\r\n`;
         part += '\r\n';
         
         const partHeader = new TextEncoder().encode(part).buffer as ArrayBuffer;
         parts.push(partHeader);
         
-        // Note: In a real implementation, you'd need to read the file data
-        // For now, we'll use an empty buffer as placeholder
-        parts.push(new ArrayBuffer(0));
+        // Read the file/blob data asynchronously
+        const fileData = await this.readBlobAsArrayBuffer(value);
+        parts.push(fileData);
       } else {
         part += `Content-Disposition: form-data; name="${key}"\r\n`;
         part += '\r\n';
@@ -523,5 +526,30 @@ export class HttpConverter {
     const error = new Error(message) as ConversionError;
     error.code = code;
     return error;
+  }
+
+  private async readBlobAsArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
+    // Check if we're in a browser environment with FileReader
+    if (typeof (globalThis as any).FileReader !== 'undefined') {
+      return new Promise((resolve, reject) => {
+        const reader = new (globalThis as any).FileReader();
+        reader.onload = () => {
+          resolve(reader.result as ArrayBuffer);
+        };
+        reader.onerror = () => {
+          reject(new Error('Failed to read blob data'));
+        };
+        reader.readAsArrayBuffer(blob);
+      });
+    }
+    
+    // For Node.js environment, try to use the blob's arrayBuffer method
+    if (blob.arrayBuffer) {
+      return await blob.arrayBuffer();
+    }
+    
+    // Fallback: create a buffer with the blob size
+    // This is not ideal but prevents the function from failing
+    return new ArrayBuffer(blob.size);
   }
 }

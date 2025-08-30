@@ -28,12 +28,12 @@ export function httpBytesToAxiosRequest(
 /**
  * Convert Axios request config to raw HTTP request bytes
  */
-export function axiosRequestToHttpBytes(
+export async function axiosRequestToHttpBytes(
   config: AxiosRequestConfig,
   options?: ConverterOptions
-): ArrayBuffer {
+): Promise<ArrayBuffer> {
   const converter = new HttpConverter(options);
-  return converter.axiosRequestToHttpBytes(config);
+  return await converter.axiosRequestToHttpBytes(config);
 }
 
 /**

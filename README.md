@@ -71,7 +71,7 @@ console.log(axiosConfig);
 // Output: { method: 'post', url: '/api/users', headers: {...}, data: {...} }
 
 // Convert Axios config back to HTTP bytes
-const convertedBytes = converter.axiosRequestToHttpBytes(axiosConfig);
+const convertedBytes = await converter.axiosRequestToHttpBytes(axiosConfig);
 ```
 
 ## API Reference
@@ -108,9 +108,9 @@ const httpBytes = new TextEncoder().encode(
 const config = converter.httpBytesToAxiosRequest(httpBytes);
 ```
 
-##### `axiosRequestToHttpBytes(config: AxiosRequestConfig): ArrayBuffer`
+##### `axiosRequestToHttpBytes(config: AxiosRequestConfig): Promise<ArrayBuffer>`
 
-Converts an Axios request configuration to raw HTTP request bytes.
+Converts an Axios request configuration to raw HTTP request bytes. 
 
 ```typescript
 const config: AxiosRequestConfig = {
@@ -120,7 +120,7 @@ const config: AxiosRequestConfig = {
   data: { name: 'John' }
 };
 
-const httpBytes = converter.axiosRequestToHttpBytes(config);
+const httpBytes = await converter.axiosRequestToHttpBytes(config);
 ```
 
 ##### `httpBytesToAxiosResponse(httpBytes: ArrayBuffer): AxiosResponse`
@@ -175,7 +175,7 @@ import {
 
 // These functions create a temporary converter instance
 const config = httpBytesToAxiosRequest(httpBytes);
-const bytes = axiosRequestToHttpBytes(config);
+const bytes = await axiosRequestToHttpBytes(config);
 ```
 
 ## Examples
@@ -212,6 +212,9 @@ console.log(axiosConfig);
 //   },
 //   data: ArrayBuffer { ... }
 // }
+
+// Convert back to HTTP bytes
+const convertedBytes = await converter.axiosRequestToHttpBytes(axiosConfig);
 ```
 
 ### Response Transformation
@@ -301,7 +304,7 @@ class CustomHttpAdapter {
 
   async request(config: AxiosRequestConfig): Promise<AxiosResponse> {
     // Convert Axios config to raw HTTP bytes
-    const httpBytes = this.converter.axiosRequestToHttpBytes(config);
+    const httpBytes = await this.converter.axiosRequestToHttpBytes(config);
     
     // Send via your custom transport (WebSocket, raw TCP, etc.)
     const responseBytes = await this.sendHttpBytes(httpBytes);
@@ -361,7 +364,7 @@ const config = {
   }
 };
 
-const httpBytes = converter.axiosRequestToHttpBytes(config);
+const httpBytes = await converter.axiosRequestToHttpBytes(config);
 // Headers will be preserved as "User-Agent" and "Accept"
 ```
 
@@ -397,25 +400,3 @@ npm run build
 # Clean build artifacts
 npm run clean
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite
-6. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Changelog
-
-### 1.0.0
-- Initial release
-- Support for HTTP request/response conversion
-- Multipart form data support
-- TypeScript definitions
-- Comprehensive test suite

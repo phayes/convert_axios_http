@@ -138,7 +138,7 @@ describe('HttpConverter', () => {
   });
 
   describe('axiosRequestToHttpBytes', () => {
-    it('should convert simple GET request', () => {
+    it('should convert simple GET request', async () => {
       const config: AxiosRequestConfig = {
         method: 'GET',
         url: '/api/users',
@@ -148,7 +148,7 @@ describe('HttpConverter', () => {
         }
       };
 
-      const result = converter.axiosRequestToHttpBytes(config);
+      const result = await converter.axiosRequestToHttpBytes(config);
       const resultText = new TextDecoder().decode(result);
 
       expect(resultText).toContain('GET /api/users HTTP/1.1');
@@ -156,7 +156,7 @@ describe('HttpConverter', () => {
       expect(resultText).toContain('user-agent: Test/1.0');
     });
 
-    it('should convert POST request with JSON body', () => {
+    it('should convert POST request with JSON body', async () => {
       const config: AxiosRequestConfig = {
         method: 'POST',
         url: '/api/users',
@@ -166,7 +166,7 @@ describe('HttpConverter', () => {
         data: { name: 'John', age: 30 }
       };
 
-      const result = converter.axiosRequestToHttpBytes(config);
+      const result = await converter.axiosRequestToHttpBytes(config);
       const resultText = new TextDecoder().decode(result);
 
       expect(resultText).toContain('POST /api/users HTTP/1.1');
@@ -174,21 +174,21 @@ describe('HttpConverter', () => {
       expect(resultText).toContain('{"name":"John","age":30}');
     });
 
-    it('should convert POST request with string body', () => {
+    it('should convert POST request with string body', async () => {
       const config: AxiosRequestConfig = {
         method: 'POST',
         url: '/api/users',
         data: 'Hello World'
       };
 
-      const result = converter.axiosRequestToHttpBytes(config);
+      const result = await converter.axiosRequestToHttpBytes(config);
       const resultText = new TextDecoder().decode(result);
 
       expect(resultText).toContain('POST /api/users HTTP/1.1');
       expect(resultText).toContain('Hello World');
     });
 
-    it('should convert POST request with ArrayBuffer body', () => {
+    it('should convert POST request with ArrayBuffer body', async () => {
       const body = new TextEncoder().encode('Binary Data');
       const config: AxiosRequestConfig = {
         method: 'POST',
@@ -196,7 +196,7 @@ describe('HttpConverter', () => {
         data: body
       };
 
-      const result = converter.axiosRequestToHttpBytes(config);
+      const result = await converter.axiosRequestToHttpBytes(config);
       const resultText = new TextDecoder().decode(result);
 
       expect(resultText).toContain('POST /api/upload HTTP/1.1');
@@ -639,6 +639,53 @@ describe('HttpConverter', () => {
 
       expect(result.status).toBe(200);
       expect(result.data).toBe('This is text data in octet-stream');
+    });
+  });
+
+  describe('FormData with File objects', () => {
+    it('should handle FormData with File objects correctly', async () => {
+      // Simulate the exact scenario from the user's bug report
+      const imageData = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01]); // JPEG header
+      const imageFile = new File([imageData], "quill_image.jpg", { type: "image/jpeg" });
+      
+      const formData = new FormData();
+      formData.append("file", imageFile);
+      formData.append("title", "Untitled");
+      formData.append("description", "");
+      formData.append("category", "quill_image");
+      formData.append("clinic_id", "16643a5b-af6c-402d-b84d-39f244e73995");
+      formData.append("filename", "quill_image.jpg");
+      formData.append("mime", "image/jpeg");
+      formData.append("public", "true");
+
+      const config: AxiosRequestConfig = {
+        method: 'POST',
+        url: '/api/file/upload',
+        data: formData
+      };
+
+      const result = await converter.axiosRequestToHttpBytes(config);
+      const resultText = new TextDecoder().decode(result);
+
+      // Verify the multipart structure is correct
+      expect(resultText).toContain('POST /api/file/upload HTTP/1.1');
+      expect(resultText).toContain('Content-Type: multipart/form-data');
+      expect(resultText).toContain('Content-Disposition: form-data; name="file"; filename="quill_image.jpg"');
+      expect(resultText).toContain('Content-Type: image/jpeg');
+      expect(resultText).toContain('Content-Disposition: form-data; name="title"');
+      expect(resultText).toContain('Content-Disposition: form-data; name="description"');
+      expect(resultText).toContain('Content-Disposition: form-data; name="category"');
+      expect(resultText).toContain('Content-Disposition: form-data; name="clinic_id"');
+      expect(resultText).toContain('Content-Disposition: form-data; name="filename"');
+      expect(resultText).toContain('Content-Disposition: form-data; name="mime"');
+      expect(resultText).toContain('Content-Disposition: form-data; name="public"');
+      
+      // Verify there's only one Content-Type header for multipart/form-data
+      const contentTypeMatches = resultText.match(/Content-Type: multipart\/form-data/g);
+      expect(contentTypeMatches).toHaveLength(1);
+      
+      // Verify the file data is actually included (not empty)
+      expect(resultText).toContain('\xFF\xD8\xFF\xE0'); // JPEG header bytes
     });
   });
 });

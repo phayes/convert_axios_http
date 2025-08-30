@@ -142,7 +142,7 @@ describe('Configuration Options', () => {
   });
 
   describe('multipartBoundary Configuration', () => {
-    it('should auto-generate multipartBoundary by default', () => {
+    it('should auto-generate multipartBoundary by default', async () => {
       const converter = new HttpConverter();
       
       const formData = new FormData();
@@ -155,14 +155,14 @@ describe('Configuration Options', () => {
         data: formData
       };
 
-      const httpBytes = converter.axiosRequestToHttpBytes(config);
+      const httpBytes = await converter.axiosRequestToHttpBytes(config);
       const httpText = new TextDecoder().decode(httpBytes);
       
       // Should contain a boundary
       expect(httpText).toMatch(/boundary=----WebKitFormBoundary/);
     });
 
-    it('should accept explicit multipartBoundary', () => {
+    it('should accept explicit multipartBoundary', async () => {
       const customBoundary = '----CustomBoundary123';
       const converter = new HttpConverter({ multipartBoundary: customBoundary });
       
@@ -175,14 +175,14 @@ describe('Configuration Options', () => {
         data: formData
       };
 
-      const httpBytes = converter.axiosRequestToHttpBytes(config);
+      const httpBytes = await converter.axiosRequestToHttpBytes(config);
       const httpText = new TextDecoder().decode(httpBytes);
       
       // Should contain the custom boundary
       expect(httpText).toContain(`boundary=${customBoundary}`);
     });
 
-    it('should generate different boundaries for different instances', () => {
+    it('should generate different boundaries for different instances', async () => {
       const converter1 = new HttpConverter();
       const converter2 = new HttpConverter();
       
@@ -195,8 +195,8 @@ describe('Configuration Options', () => {
         data: formData
       };
 
-      const httpBytes1 = converter1.axiosRequestToHttpBytes(config);
-      const httpBytes2 = converter2.axiosRequestToHttpBytes(config);
+      const httpBytes1 = await converter1.axiosRequestToHttpBytes(config);
+      const httpBytes2 = await converter2.axiosRequestToHttpBytes(config);
       
       const httpText1 = new TextDecoder().decode(httpBytes1);
       const httpText2 = new TextDecoder().decode(httpBytes2);
@@ -212,7 +212,7 @@ describe('Configuration Options', () => {
   });
 
   describe('Combined Configuration Options', () => {
-    it('should handle all options together', () => {
+    it('should handle all options together', async () => {
       const options = {
         maxBodySize: 5 * 1024 * 1024, // 5MB
         preserveHeaderCase: true,
@@ -243,12 +243,12 @@ describe('Configuration Options', () => {
         data: formData
       };
 
-      const multipartBytes = converter.axiosRequestToHttpBytes(config);
+      const multipartBytes = await converter.axiosRequestToHttpBytes(config);
       const multipartText = new TextDecoder().decode(multipartBytes);
       expect(multipartText).toContain('boundary=----TestBoundary');
     });
 
-    it('should handle partial options', () => {
+    it('should handle partial options', async () => {
       const converter = new HttpConverter({ 
         maxBodySize: 1024,
         preserveHeaderCase: true 
@@ -276,7 +276,7 @@ describe('Configuration Options', () => {
         data: formData
       };
 
-      const multipartBytes = converter.axiosRequestToHttpBytes(config);
+      const multipartBytes = await converter.axiosRequestToHttpBytes(config);
       const multipartText = new TextDecoder().decode(multipartBytes);
       expect(multipartText).toMatch(/boundary=----WebKitFormBoundary/);
     });
@@ -315,7 +315,7 @@ describe('Configuration Options', () => {
   });
 
   describe('Configuration Persistence', () => {
-    it('should maintain configuration across multiple operations', () => {
+    it('should maintain configuration across multiple operations', async () => {
       const converter = new HttpConverter({ 
         maxBodySize: 2048,
         preserveHeaderCase: true,
@@ -344,7 +344,7 @@ describe('Configuration Options', () => {
         data: formData
       };
 
-      const multipartBytes = converter.axiosRequestToHttpBytes(config);
+      const multipartBytes = await converter.axiosRequestToHttpBytes(config);
       const multipartText = new TextDecoder().decode(multipartBytes);
       expect(multipartText).toContain('boundary=----PersistentBoundary');
 

@@ -30,7 +30,7 @@ const axiosConfig = converter.httpBytesToAxiosRequest(httpRequestBytes);
 console.log('Axios Config:', axiosConfig);
 
 // Convert Axios config back to HTTP bytes
-const convertedBytes = converter.axiosRequestToHttpBytes(axiosConfig);
+const convertedBytes = await converter.axiosRequestToHttpBytes(axiosConfig);
 console.log('Converted back to bytes:', new TextDecoder().decode(convertedBytes));
 
 // Example 2: Using convenience functions
@@ -45,7 +45,7 @@ const config: AxiosRequestConfig = {
   }
 };
 
-const httpBytes = axiosRequestToHttpBytes(config);
+const httpBytes = await axiosRequestToHttpBytes(config);
 console.log('HTTP Request:', new TextDecoder().decode(httpBytes));
 
 // Example 3: Handling multipart form data
@@ -115,7 +115,7 @@ class CustomHttpAdapter {
 
   async request(config: AxiosRequestConfig): Promise<AxiosResponse> {
     // Convert Axios config to raw HTTP bytes
-    const httpBytes = this.converter.axiosRequestToHttpBytes(config);
+    const httpBytes = await this.converter.axiosRequestToHttpBytes(config);
     
     // Send the raw HTTP bytes (e.g., via WebSocket, raw TCP, etc.)
     // const responseBytes = await this.sendHttpBytes(httpBytes);
@@ -168,5 +168,6 @@ const configWithHeaders = {
   }
 };
 
-const bytesWithOptions = converterWithOptions.axiosRequestToHttpBytes(configWithHeaders);
+const bytesWithOptions = await converterWithOptions.axiosRequestToHttpBytes(configWithHeaders);
 console.log('With preserved header case:', new TextDecoder().decode(bytesWithOptions));
+
