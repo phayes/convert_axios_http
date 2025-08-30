@@ -238,6 +238,7 @@ console.log(config.data instanceof FormData); // true
 ```typescript
 import { HttpConverter } from 'convert-axios-http';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios from 'axios';
 
 class CustomHttpAdapter {
   private converter = new HttpConverter();
@@ -259,6 +260,11 @@ class CustomHttpAdapter {
     throw new Error('Not implemented');
   }
 }
+
+axios.defaults.adapter = async (config) => {
+  const transport = new CustomHttpAdapter();
+  return transport.request(config);
+};
 ```
 
 ### Error Handling
