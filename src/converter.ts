@@ -68,19 +68,28 @@ export class HttpConverter {
     // Build HTTP request line
     let httpRequest = `${method} ${url} HTTP/1.1\r\n`;
 
+    let is_form_data = (data instanceof FormData);
+
     // Add headers
     for (const [key, value] of Object.entries(headers)) {
       const headerKey = this.options.preserveHeaderCase ? key : key.toLowerCase();
+
+      if (is_form_data && headerKey.toLowerCase() === 'content-type') {
+        continue;
+      }
+      if (is_form_data && headerKey.toLowerCase() === 'content-length') {
+        continue;
+      }
       httpRequest += `${headerKey}: ${value}\r\n`;
     }
 
     // Handle multipart form data
     if (data instanceof FormData) {
       const boundary = this.options.multipartBoundary;
-      httpRequest += `Content-Type: multipart/form-data; boundary=${boundary}\r\n`;
+      httpRequest += `content-type: multipart/form-data; boundary=${boundary}\r\n`;
       
       const multipartBody = await this.buildMultipartBody(data, boundary);
-      httpRequest += `Content-Length: ${multipartBody.byteLength}\r\n`;
+      httpRequest += `content-length: ${multipartBody.byteLength}\r\n`;
       httpRequest += '\r\n';
       
       // Combine header and body
@@ -105,13 +114,13 @@ export class HttpConverter {
       } else {
         bodyBytes = new TextEncoder().encode(JSON.stringify(data)).buffer as ArrayBuffer;
         if (!headers['content-type']) {
-          httpRequest += 'Content-Type: application/json\r\n';
+          httpRequest += 'content-type: application/json\r\n';
         }
       }
     }
 
     if (bodyBytes) {
-      httpRequest += `Content-Length: ${bodyBytes.byteLength}\r\n`;
+      httpRequest += `content-length: ${bodyBytes.byteLength}\r\n`;
     }
 
     httpRequest += '\r\n';
