@@ -289,7 +289,7 @@ console.log(config.data instanceof FormData); // true
 ### Custom Axios Adapter
 
 ```typescript
-import { your_custom_transport_here } from './your_custom_transport_here';
+import { your_custom_transport_func } from './your_custom_transport_func';
 import { HttpConverter } from 'convert-axios-http';
 import { AxiosHeaders, RawAxiosRequestHeaders, AxiosRequestHeaders, AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig } from "axios";
 
@@ -298,7 +298,7 @@ let converter = new HttpConverter();
 export default (config: AxiosRequestConfig) => {
   return new Promise((resolve, reject) => {
     converter.axiosRequestToHttpBytes(config).then((httpBytes) => {
-      your_custom_transport_here(httpBytes).then((responseBytes) => {
+      your_custom_transport_func(httpBytes).then((responseBytes) => {
         let response = converter.httpBytesToAxiosResponse(responseBytes);
 
         config.headers = normalizeAxiosRequestHeaders(config.headers);
