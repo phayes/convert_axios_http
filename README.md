@@ -2,12 +2,6 @@
 
 A TypeScript utility package for converting between raw HTTP bytes and Axios request/response objects. This package provides seamless conversion capabilities for HTTP requests and responses, including support for multipart form data and file uploads.
 
-## Environment Support
-
-- **Browser**: Full support (all required APIs are native)
-- **Node.js**: Requires Node.js 18+ with experimental Web APIs enabled
-- **Node.js < 18**: Requires polyfills for `FormData`, `Blob`, and `File` APIs
-
 ## Features
 
 - **Bidirectional Conversion**: Convert between raw HTTP bytes and Axios objects in both directions
@@ -294,36 +288,59 @@ console.log(config.data instanceof FormData); // true
 
 ### Custom Axios Adapter
 
+You can use this package as an axios adapter to transform axios requests into raw HTTP Requests, handle them however you'd like (including whatever custom transport you'd like) then transform the result back into an axios response. 
+
 ```typescript
+import { your_custom_transport_func } from './your_custom_transport_func';
 import { HttpConverter } from 'convert-axios-http';
-import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import axios from 'axios';
+import { AxiosHeaders, RawAxiosRequestHeaders, AxiosRequestHeaders, AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig } from "axios";
 
-class CustomHttpAdapter {
-  private converter = new HttpConverter();
+let converter = new HttpConverter();
 
-  async request(config: AxiosRequestConfig): Promise<AxiosResponse> {
-    // Convert Axios config to raw HTTP bytes
-    const httpBytes = await this.converter.axiosRequestToHttpBytes(config);
-    
-    // Send via your custom transport (WebSocket, raw TCP, etc.)
-    const responseBytes = await this.sendHttpBytes(httpBytes);
-    
-    // Convert response bytes back to Axios response
-    return this.converter.httpBytesToAxiosResponse(responseBytes);
+export default (config: AxiosRequestConfig) => {
+  return new Promise((resolve, reject) => {
+    converter.axiosRequestToHttpBytes(config).then((httpBytes) => {
+      your_custom_transport_func(httpBytes).then((responseBytes) => {
+        let response = converter.httpBytesToAxiosResponse(responseBytes);
+
+        config.headers = normalizeAxiosRequestHeaders(config.headers);
+        response.config = config as InternalAxiosRequestConfig;
+
+        if (response.status < 300) {
+          return resolve(response);
+        }
+        else {
+          let err = new AxiosError(
+            'Request failed with status code ' + response.status,
+            [AxiosError.ERR_BAD_REQUEST, AxiosError.ERR_BAD_RESPONSE][Math.floor(response.status / 100) - 4],
+            response.config,
+            config,
+            response
+          );
+          return reject(err);
+        }
+      });
+    });
+  });
+};
+
+// Normalize headers so they’re always AxiosHeaders.
+function normalizeAxiosRequestHeaders(
+  headers?: RawAxiosRequestHeaders | AxiosHeaders
+): AxiosRequestHeaders {
+  if (!headers) {
+    return new AxiosHeaders(); // empty
   }
-
-  private async sendHttpBytes(httpBytes: ArrayBuffer): Promise<ArrayBuffer> {
-    // Your implementation here
-    // Could be WebSocket, raw TCP, or any other transport
-    throw new Error('Not implemented');
+  // If it's already an AxiosHeaders, just return as-is
+  if (headers instanceof AxiosHeaders) {
+    return headers as AxiosRequestHeaders;
   }
+  // Otherwise, convert to AxiosHeaders
+  return AxiosHeaders.from(headers as any);
 }
 
-axios.defaults.adapter = async (config) => {
-  const transport = new CustomHttpAdapter();
-  return transport.request(config);
-};
+// Apply the adapter
+axios.defaults.adapter = AxiosHttpProxy;
 ```
 
 ### Error Handling
