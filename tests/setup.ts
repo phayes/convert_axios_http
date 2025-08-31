@@ -24,14 +24,19 @@ if (typeof global.FormData === 'undefined') {
   } as any;
 }
 
-if (typeof global.File === 'undefined') {
-  global.File = class File {
-    constructor(
-      public readonly name: string,
-      public readonly type: string = 'application/octet-stream'
-    ) {}
-  } as any;
-}
+// Always override File to ensure our mock is used
+global.File = class File extends Blob {
+  public readonly name: string;
+  
+  constructor(
+    content: any[],
+    name: string,
+    options: { type?: string } = {}
+  ) {
+    super(content, options);
+    this.name = name;
+  }
+} as any;
 
 if (typeof global.Blob === 'undefined') {
   global.Blob = class Blob {

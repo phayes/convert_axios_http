@@ -72,14 +72,27 @@ export class HttpConverter {
 
     // Add headers
     for (const [key, value] of Object.entries(headers)) {
+      // Skip headers with undefined or null values
+      if (value === undefined || value === null) {
+        continue;
+      }
+      
+      const headerKeyLower = key.toLowerCase();
+      
+      // Skip content-type and content-length for FormData (handled separately)
+      if (is_form_data && headerKeyLower === 'content-type') {
+        continue;
+      }
+      if (is_form_data && headerKeyLower === 'content-length') {
+        continue;
+      }
+      
+      // Skip content-type for requests without body
+      if (!data && headerKeyLower === 'content-type') {
+        continue;
+      }
+      
       const headerKey = this.options.preserveHeaderCase ? key : key.toLowerCase();
-
-      if (is_form_data && headerKey.toLowerCase() === 'content-type') {
-        continue;
-      }
-      if (is_form_data && headerKey.toLowerCase() === 'content-length') {
-        continue;
-      }
       httpRequest += `${headerKey}: ${value}\r\n`;
     }
 
@@ -113,7 +126,9 @@ export class HttpConverter {
         bodyBytes = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
       } else {
         bodyBytes = new TextEncoder().encode(JSON.stringify(data)).buffer as ArrayBuffer;
-        if (!headers['content-type']) {
+        // Check for content-type header case-insensitively
+        const hasContentType = Object.keys(headers).some(key => key.toLowerCase() === 'content-type');
+        if (!hasContentType) {
           httpRequest += 'content-type: application/json\r\n';
         }
       }
@@ -485,9 +500,11 @@ export class HttpConverter {
     for (const [key, value] of formData.entries()) {
       let part = `--${boundary}\r\n`;
       
-      if (value instanceof Blob) {
-        const filename = value instanceof (globalThis as any).File ? (value as any).name : 'blob';
-        const contentType = value.type || 'application/octet-stream';
+      // Check if it's a Blob or File-like object
+      if (value instanceof Blob || (value && typeof value === 'object' && 'type' in value)) {
+        // Check if it's a File by checking for the name property
+        const filename = (value as any).name || 'blob';
+        const contentType = (value as any).type || 'application/octet-stream';
         
         part += `Content-Disposition: form-data; name="${key}"; filename="${filename}"\r\n`;
         part += `Content-Type: ${contentType}\r\n`;

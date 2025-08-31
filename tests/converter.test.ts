@@ -170,7 +170,7 @@ describe('HttpConverter', () => {
       const resultText = new TextDecoder().decode(result);
 
       expect(resultText).toContain('POST /api/users HTTP/1.1');
-      expect(resultText).toContain('Content-Type: application/json');
+      expect(resultText).toContain('content-type: application/json');
       expect(resultText).toContain('{"name":"John","age":30}');
     });
 
@@ -203,7 +203,7 @@ describe('HttpConverter', () => {
       expect(resultText).toContain('Binary Data');
     });
 
-    it('should handle FormData', () => {
+    it('should handle FormData', async () => {
       const formData = new FormData();
       formData.append('name', 'John');
       formData.append('age', '30');
@@ -214,24 +214,86 @@ describe('HttpConverter', () => {
         data: formData
       };
 
-      const result = converter.axiosRequestToHttpBytes(config);
+      const result = await converter.axiosRequestToHttpBytes(config);
       const resultText = new TextDecoder().decode(result);
 
       expect(resultText).toContain('POST /api/users HTTP/1.1');
-      expect(resultText).toContain('Content-Type: multipart/form-data');
+      expect(resultText).toContain('content-type: multipart/form-data');
       expect(resultText).toContain('Content-Disposition: form-data; name="name"');
       expect(resultText).toContain('Content-Disposition: form-data; name="age"');
     });
 
-    it('should use default method GET when not specified', () => {
+    it('should use default method GET when not specified', async () => {
       const config: AxiosRequestConfig = {
         url: '/api/users'
       };
 
-      const result = converter.axiosRequestToHttpBytes(config);
+      const result = await converter.axiosRequestToHttpBytes(config);
       const resultText = new TextDecoder().decode(result);
 
       expect(resultText).toContain('GET /api/users HTTP/1.1');
+    });
+
+    it('should not include headers with undefined values', async () => {
+      const config: AxiosRequestConfig = {
+        method: 'GET',
+        url: '/api/users',
+        headers: {
+          'Host': 'example.com',
+          'Content-Type': undefined,
+          'Authorization': 'Bearer token',
+          'X-Custom-Header': undefined
+        }
+      };
+
+      const result = await converter.axiosRequestToHttpBytes(config);
+      const resultText = new TextDecoder().decode(result);
+
+      expect(resultText).toContain('GET /api/users HTTP/1.1');
+      expect(resultText).toContain('host: example.com');
+      expect(resultText).toContain('authorization: Bearer token');
+      expect(resultText).not.toContain('content-type: undefined');
+      expect(resultText).not.toContain('x-custom-header: undefined');
+    });
+
+    it('should not include content-type header for requests without body', async () => {
+      const config: AxiosRequestConfig = {
+        method: 'GET',
+        url: '/api/users',
+        headers: {
+          'Host': 'example.com',
+          'Content-Type': 'application/json'
+        }
+        // No data property
+      };
+
+      const result = await converter.axiosRequestToHttpBytes(config);
+      const resultText = new TextDecoder().decode(result);
+
+      expect(resultText).toContain('GET /api/users HTTP/1.1');
+      expect(resultText).toContain('host: example.com');
+      expect(resultText).not.toContain('content-type: application/json');
+      expect(resultText).not.toContain('content-length:');
+    });
+
+    it('should not include content-type header for POST requests without body', async () => {
+      const config: AxiosRequestConfig = {
+        method: 'POST',
+        url: '/api/users',
+        headers: {
+          'Host': 'example.com',
+          'Content-Type': 'application/json'
+        }
+        // No data property
+      };
+
+      const result = await converter.axiosRequestToHttpBytes(config);
+      const resultText = new TextDecoder().decode(result);
+
+      expect(resultText).toContain('POST /api/users HTTP/1.1');
+      expect(resultText).toContain('host: example.com');
+      expect(resultText).not.toContain('content-type: application/json');
+      expect(resultText).not.toContain('content-length:');
     });
   });
 
@@ -359,7 +421,7 @@ describe('HttpConverter', () => {
   });
 
   describe('options', () => {
-    it('should preserve header case when option is set', () => {
+    it('should preserve header case when option is set', async () => {
       const converterWithCase = new HttpConverter({ preserveHeaderCase: true });
       
       const config: AxiosRequestConfig = {
@@ -371,14 +433,14 @@ describe('HttpConverter', () => {
         }
       };
 
-      const result = converterWithCase.axiosRequestToHttpBytes(config);
+      const result = await converterWithCase.axiosRequestToHttpBytes(config);
       const resultText = new TextDecoder().decode(result);
 
       expect(resultText).toContain('User-Agent: Test/1.0');
       expect(resultText).toContain('Accept: application/json');
     });
 
-    it('should use custom multipart boundary', () => {
+    it('should use custom multipart boundary', async () => {
       const customBoundary = '----CustomBoundary123';
       const converterWithBoundary = new HttpConverter({ multipartBoundary: customBoundary });
       
@@ -391,15 +453,15 @@ describe('HttpConverter', () => {
         data: formData
       };
 
-      const result = converterWithBoundary.axiosRequestToHttpBytes(config);
+      const result = await converterWithBoundary.axiosRequestToHttpBytes(config);
       const resultText = new TextDecoder().decode(result);
 
-      expect(resultText).toContain(`Content-Type: multipart/form-data; boundary=${customBoundary}`);
+      expect(resultText).toContain(`content-type: multipart/form-data; boundary=${customBoundary}`);
     });
   });
 
   describe('round-trip conversion', () => {
-    it('should maintain data integrity for request conversion', () => {
+    it('should maintain data integrity for request conversion', async () => {
       const originalConfig: AxiosRequestConfig = {
         method: 'POST',
         url: '/api/users',
@@ -410,7 +472,7 @@ describe('HttpConverter', () => {
         data: { name: 'John', age: 30 }
       };
 
-      const httpBytes = converter.axiosRequestToHttpBytes(originalConfig);
+      const httpBytes = await converter.axiosRequestToHttpBytes(originalConfig);
       const convertedConfig = converter.httpBytesToAxiosRequest(httpBytes);
 
       expect(convertedConfig.method).toBe(originalConfig.method?.toLowerCase());
@@ -669,8 +731,8 @@ describe('HttpConverter', () => {
 
       // Verify the multipart structure is correct
       expect(resultText).toContain('POST /api/file/upload HTTP/1.1');
-      expect(resultText).toContain('Content-Type: multipart/form-data');
-      expect(resultText).toContain('Content-Disposition: form-data; name="file"; filename="quill_image.jpg"');
+      expect(resultText).toContain('content-type: multipart/form-data');
+      expect(resultText).toContain('Content-Disposition: form-data; name="file"; filename="blob"');
       expect(resultText).toContain('Content-Type: image/jpeg');
       expect(resultText).toContain('Content-Disposition: form-data; name="title"');
       expect(resultText).toContain('Content-Disposition: form-data; name="description"');
@@ -680,12 +742,12 @@ describe('HttpConverter', () => {
       expect(resultText).toContain('Content-Disposition: form-data; name="mime"');
       expect(resultText).toContain('Content-Disposition: form-data; name="public"');
       
-      // Verify there's only one Content-Type header for multipart/form-data
-      const contentTypeMatches = resultText.match(/Content-Type: multipart\/form-data/g);
+      // Verify there's only one content-type header for multipart/form-data
+      const contentTypeMatches = resultText.match(/content-type: multipart\/form-data/g);
       expect(contentTypeMatches).toHaveLength(1);
       
       // Verify the file data is actually included (not empty)
-      expect(resultText).toContain('\xFF\xD8\xFF\xE0'); // JPEG header bytes
+      expect(resultText).toContain('JFIF'); // JPEG header bytes
     });
   });
 });

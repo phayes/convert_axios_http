@@ -58,7 +58,7 @@ describe('Convenience Functions', () => {
       const resultText = new TextDecoder().decode(result);
 
       expect(resultText).toContain('POST /api/users HTTP/1.1');
-      expect(resultText).toContain('Content-Type: application/json');
+      expect(resultText).toContain('content-type: application/json');
       expect(resultText).toContain('{"name":"John"}');
     });
 
@@ -154,7 +154,7 @@ describe('Convenience Functions', () => {
   });
 
   describe('Integration with HttpConverter', () => {
-    it('should produce same results as HttpConverter instance', () => {
+    it('should produce same results as HttpConverter instance', async () => {
       const converter = new HttpConverter();
       const config: AxiosRequestConfig = {
         method: 'POST',
@@ -162,13 +162,13 @@ describe('Convenience Functions', () => {
         data: { name: 'John' }
       };
 
-      const directResult = converter.axiosRequestToHttpBytes(config);
-      const functionResult = axiosRequestToHttpBytes(config);
+      const directResult = await converter.axiosRequestToHttpBytes(config);
+      const functionResult = await axiosRequestToHttpBytes(config);
 
       expect(functionResult).toEqual(directResult);
     });
 
-    it('should handle options consistently', () => {
+    it('should handle options consistently', async () => {
       const options = { preserveHeaderCase: true };
       const config: AxiosRequestConfig = {
         method: 'GET',
@@ -179,8 +179,8 @@ describe('Convenience Functions', () => {
       };
 
       const converter = new HttpConverter(options);
-      const directResult = converter.axiosRequestToHttpBytes(config);
-      const functionResult = axiosRequestToHttpBytes(config, options);
+      const directResult = await converter.axiosRequestToHttpBytes(config);
+      const functionResult = await axiosRequestToHttpBytes(config, options);
 
       expect(functionResult).toEqual(directResult);
     });
